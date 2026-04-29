@@ -26,7 +26,7 @@ const file_api_proto_internal_proto_rawDesc = "" +
 	"\n" +
 	"\x18api/proto/internal.proto\x12\aagentgw\x1a\x15api/proto/agent.proto2T\n" +
 	"\x0fGatewayInternal\x12A\n" +
-	"\x0eForwardRequest\x12\x15.agentgw.AgentRequest\x1a\x16.agentgw.AgentResponse0\x01B'Z%github.com/wereliang/aiagw/api/protob\x06proto3"
+	"\x0eForwardRequest\x12\x15.agentgw.AgentRequest\x1a\x16.agentgw.AgentResponse0\x01B&Z$github.com/wereliang/aiagw/api/protob\x06proto3"
 
 var file_api_proto_internal_proto_goTypes = []any{
 	(*AgentRequest)(nil),  // 0: agentgw.AgentRequest

@@ -24,9 +24,8 @@ const (
 type AgentRegister struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	AgentId       string                 `protobuf:"bytes,1,opt,name=agent_id,json=agentId,proto3" json:"agent_id,omitempty"`
-	TenantId      string                 `protobuf:"bytes,2,opt,name=tenant_id,json=tenantId,proto3" json:"tenant_id,omitempty"`
-	AgentType     string                 `protobuf:"bytes,3,opt,name=agent_type,json=agentType,proto3" json:"agent_type,omitempty"`
-	Metadata      map[string]string      `protobuf:"bytes,4,rep,name=metadata,proto3" json:"metadata,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	AgentType     string                 `protobuf:"bytes,2,opt,name=agent_type,json=agentType,proto3" json:"agent_type,omitempty"`
+	Metadata      map[string]string      `protobuf:"bytes,3,rep,name=metadata,proto3" json:"metadata,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -64,13 +63,6 @@ func (*AgentRegister) Descriptor() ([]byte, []int) {
 func (x *AgentRegister) GetAgentId() string {
 	if x != nil {
 		return x.AgentId
-	}
-	return ""
-}
-
-func (x *AgentRegister) GetTenantId() string {
-	if x != nil {
-		return x.TenantId
 	}
 	return ""
 }
@@ -595,13 +587,12 @@ var File_api_proto_agent_proto protoreflect.FileDescriptor
 
 const file_api_proto_agent_proto_rawDesc = "" +
 	"\n" +
-	"\x15api/proto/agent.proto\x12\aagentgw\"\xe5\x01\n" +
+	"\x15api/proto/agent.proto\x12\aagentgw\"\xc8\x01\n" +
 	"\rAgentRegister\x12\x19\n" +
-	"\bagent_id\x18\x01 \x01(\tR\aagentId\x12\x1b\n" +
-	"\ttenant_id\x18\x02 \x01(\tR\btenantId\x12\x1d\n" +
+	"\bagent_id\x18\x01 \x01(\tR\aagentId\x12\x1d\n" +
 	"\n" +
-	"agent_type\x18\x03 \x01(\tR\tagentType\x12@\n" +
-	"\bmetadata\x18\x04 \x03(\v2$.agentgw.AgentRegister.MetadataEntryR\bmetadata\x1a;\n" +
+	"agent_type\x18\x02 \x01(\tR\tagentType\x12@\n" +
+	"\bmetadata\x18\x03 \x03(\v2$.agentgw.AgentRegister.MetadataEntryR\bmetadata\x1a;\n" +
 	"\rMetadataEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\xb9\x01\n" +
@@ -644,7 +635,7 @@ const file_api_proto_agent_proto_rawDesc = "" +
 	"\tHeartbeat\x12\x1c\n" +
 	"\ttimestamp\x18\x01 \x01(\x03R\ttimestamp2M\n" +
 	"\fAgentGateway\x12=\n" +
-	"\aConnect\x12\x15.agentgw.AgentMessage\x1a\x17.agentgw.GatewayMessage(\x010\x01B'Z%github.com/wereliang/aiagw/api/protob\x06proto3"
+	"\aConnect\x12\x15.agentgw.AgentMessage\x1a\x17.agentgw.GatewayMessage(\x010\x01B&Z$github.com/wereliang/aiagw/api/protob\x06proto3"
 
 var (
 	file_api_proto_agent_proto_rawDescOnce sync.Once
