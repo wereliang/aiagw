@@ -1,0 +1,25 @@
+server:
+  http_port: 8080
+  grpc_port: 19090
+  internal_grpc_port: 19091
+  instance_id: ""
+
+redis:
+  addr: "localhost:6379"
+  password: ""
+  db: 0
+
+session:
+  ttl: 30m
+
+agent:
+  heartbeat_interval: 30s
+  heartbeat_timeout: 90s
+
+auth:
+  # Add your API keys here
+  api_keys: []
+
+log:
+  level: info
+  # format: json

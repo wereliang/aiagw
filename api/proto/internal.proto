@@ -1,0 +1,11 @@
+syntax = "proto3";
+
+package agentgw;
+
+option go_package = "github.com/wereliang/aiagw/api/proto";
+
+import "api/proto/agent.proto";
+
+service GatewayInternal {
+  rpc ForwardRequest(AgentRequest) returns (stream AgentResponse);
+}
