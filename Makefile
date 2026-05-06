@@ -1,10 +1,22 @@
-.PHONY: all build clean test lint proto run help
+.PHONY: all build clean test lint proto run help \
+	docker-gateway docker-agent docker-all docker-push \
+	kind-load kind-deploy kind-clean
 
 # Build variables
 BINARY_NAME=gateway
 BUILD_DIR=.
 CMD_DIR=./cmd/gateway
 PROTO_DIR=./api/proto
+
+# Docker variables
+DOCKER_REGISTRY ?=
+IMAGE_TAG ?= latest
+GATEWAY_IMAGE = $(if $(DOCKER_REGISTRY),$(DOCKER_REGISTRY)/)aiagw/gateway:$(IMAGE_TAG)
+AGENT_IMAGE = $(if $(DOCKER_REGISTRY),$(DOCKER_REGISTRY)/)aiagw/claude-proxy-agent:$(IMAGE_TAG)
+AGENT_PY_IMAGE = $(if $(DOCKER_REGISTRY),$(DOCKER_REGISTRY)/)aiagw/claude-proxy-agent-python:$(IMAGE_TAG)
+
+# Kind variables
+KIND_CLUSTER ?= mycluster
 
 # Go build flags
 LDFLAGS=-ldflags "-s -w"
@@ -52,6 +64,43 @@ run: build
 deps:
 	go mod download
 	go mod tidy
+
+## docker-gateway: Build gateway Docker image
+docker-gateway:
+	docker build -t $(GATEWAY_IMAGE) -f deploy/docker/Dockerfile.gateway .
+
+## docker-agent: Build claude-proxy-agent Docker image (Go)
+docker-agent:
+	docker build -t $(AGENT_IMAGE) -f deploy/docker/Dockerfile.claude-proxy-agent .
+
+## docker-agent-python: Build claude-proxy-agent Docker image (Python)
+docker-agent-python:
+	docker build -t $(AGENT_PY_IMAGE) -f deploy/docker/Dockerfile.claude-proxy-agent-python .
+
+## docker-all: Build all Docker images
+docker-all: docker-gateway docker-agent
+
+## docker-push: Push all Docker images to registry
+docker-push: docker-all
+	docker push $(GATEWAY_IMAGE)
+	docker push $(AGENT_IMAGE)
+
+## kind-load: Build images and load into kind cluster
+kind-load: docker-all
+	kind load docker-image $(GATEWAY_IMAGE) --name $(KIND_CLUSTER)
+	kind load docker-image $(AGENT_IMAGE) --name $(KIND_CLUSTER)
+
+## kind-deploy: Load images and apply k8s manifests to kind
+kind-deploy: kind-load
+	kubectl apply -f deploy/k8s/namespace.yaml
+	kubectl apply -f deploy/k8s/redis.yaml
+	kubectl apply -f deploy/k8s/secrets.yaml
+	kubectl apply -f deploy/k8s/gateway.yaml
+	kubectl apply -f deploy/k8s/claude-proxy-agent.yaml
+
+## kind-clean: Delete all aiagw resources from kind
+kind-clean:
+	kubectl delete namespace aiagw --ignore-not-found
 
 ## help: Show this help
 help:

@@ -496,10 +496,11 @@ func (x *ChatMessage) GetContent() string {
 }
 
 type StreamChunk struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Content       string                 `protobuf:"bytes,1,opt,name=content,proto3" json:"content,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state            protoimpl.MessageState `protogen:"open.v1"`
+	Content          string                 `protobuf:"bytes,1,opt,name=content,proto3" json:"content,omitempty"`
+	ReasoningContent string                 `protobuf:"bytes,2,opt,name=reasoning_content,json=reasoningContent,proto3" json:"reasoning_content,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
 }
 
 func (x *StreamChunk) Reset() {
@@ -535,6 +536,13 @@ func (*StreamChunk) Descriptor() ([]byte, []int) {
 func (x *StreamChunk) GetContent() string {
 	if x != nil {
 		return x.Content
+	}
+	return ""
+}
+
+func (x *StreamChunk) GetReasoningContent() string {
+	if x != nil {
+		return x.ReasoningContent
 	}
 	return ""
 }
@@ -629,9 +637,10 @@ const file_api_proto_agent_proto_rawDesc = "" +
 	"\acontent\";\n" +
 	"\vChatMessage\x12\x12\n" +
 	"\x04role\x18\x01 \x01(\tR\x04role\x12\x18\n" +
-	"\acontent\x18\x02 \x01(\tR\acontent\"'\n" +
+	"\acontent\x18\x02 \x01(\tR\acontent\"T\n" +
 	"\vStreamChunk\x12\x18\n" +
-	"\acontent\x18\x01 \x01(\tR\acontent\")\n" +
+	"\acontent\x18\x01 \x01(\tR\acontent\x12+\n" +
+	"\x11reasoning_content\x18\x02 \x01(\tR\x10reasoningContent\")\n" +
 	"\tHeartbeat\x12\x1c\n" +
 	"\ttimestamp\x18\x01 \x01(\x03R\ttimestamp2M\n" +
 	"\fAgentGateway\x12=\n" +

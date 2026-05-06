@@ -80,6 +80,7 @@ func (h *ChatHandler) Handle(c *gin.Context) {
 		zap.String("agent_type", agentType),
 		zap.Bool("stream", req.Stream),
 		zap.Bool("existing_session", isExisting),
+		zap.String("request_session_id", rawSessionID),
 		zap.Int("messages_count", len(req.Messages)),
 	)
 
@@ -160,7 +161,13 @@ func (h *ChatHandler) handleNonStreamLocal(c *gin.Context, agentID, requestID st
 	h.grpcServer.RegisterResponseHandler(requestID, func(resp *pb.AgentResponse) {
 		respCh <- resp
 	})
-	defer h.grpcServer.UnregisterResponseHandler(requestID)
+	defer func() {
+		h.logger.Info("unregistering response handler",
+			zap.String("request_id", requestID),
+			zap.String("agent_id", agentID),
+		)
+		h.grpcServer.UnregisterResponseHandler(requestID)
+	}()
 
 	if err := h.grpcServer.SendRequest(agentID, req); err != nil {
 		respondError(c, errcode.ErrServiceUnavailable("failed to send request to agent: "+err.Error()))
@@ -176,7 +183,8 @@ func (h *ChatHandler) handleNonStreamLocal(c *gin.Context, agentID, requestID st
 
 func (h *ChatHandler) collectNonStreamResponse(c *gin.Context, agentID, agentType string, respCh <-chan *pb.AgentResponse, isExisting bool) *pb.AgentResponse {
 	var contentBuf strings.Builder
-	sessionHandled := isExisting
+	sessionHandled := false
+	requestSessionID := c.GetHeader("X-Session-Id")
 
 	for {
 		select {
@@ -186,8 +194,17 @@ func (h *ChatHandler) collectNonStreamResponse(c *gin.Context, agentID, agentTyp
 				return nil
 			}
 
-			if !sessionHandled && resp.GetSessionId() != "" {
-				h.ensureSession(c, agentID, agentType, resp.GetSessionId())
+			respSessionID := resp.GetSessionId()
+			if !sessionHandled && respSessionID != "" {
+				compositeRespSessionID := session.ComposeSessionID(agentType, respSessionID)
+				if requestSessionID != compositeRespSessionID {
+					h.logger.Info("session updated",
+						zap.String("agent_id", agentID),
+						zap.String("request_session_id", requestSessionID),
+						zap.String("response_session_id", compositeRespSessionID),
+					)
+					h.ensureSession(c, agentID, agentType, respSessionID)
+				}
 				sessionHandled = true
 			}
 
@@ -213,10 +230,16 @@ func (h *ChatHandler) collectNonStreamResponse(c *gin.Context, agentID, agentTyp
 			}
 
 		case <-time.After(responseTimeout):
+			h.logger.Warn("non-stream response timeout",
+				zap.String("agent_id", agentID),
+			)
 			respondError(c, errcode.ErrTimeout("agent did not respond within timeout"))
 			return nil
 
 		case <-c.Request.Context().Done():
+			h.logger.Warn("non-stream client disconnected",
+				zap.String("agent_id", agentID),
+			)
 			respondError(c, errcode.ErrTimeout("request cancelled"))
 			return nil
 		}
@@ -262,7 +285,13 @@ func (h *ChatHandler) handleStreamLocal(c *gin.Context, agentID, requestID strin
 	h.grpcServer.RegisterResponseHandler(requestID, func(resp *pb.AgentResponse) {
 		respCh <- resp
 	})
-	defer h.grpcServer.UnregisterResponseHandler(requestID)
+	defer func() {
+		h.logger.Info("unregistering stream handler",
+			zap.String("request_id", requestID),
+			zap.String("agent_id", agentID),
+		)
+		h.grpcServer.UnregisterResponseHandler(requestID)
+	}()
 
 	if err := h.grpcServer.SendRequest(agentID, req); err != nil {
 		respondError(c, errcode.ErrServiceUnavailable("failed to send request to agent: "+err.Error()))
@@ -290,7 +319,10 @@ func (h *ChatHandler) writeStreamResponses(c *gin.Context, agentID, agentType st
 	c.Header("Connection", "keep-alive")
 
 	flusher, _ := c.Writer.(http.Flusher)
-	sessionCreated := isExisting
+	sessionHandled := false
+	requestSessionID := c.GetHeader("X-Session-Id")
+	sentContentLen := 0
+	sentReasoningLen := 0
 
 	for {
 		select {
@@ -303,9 +335,19 @@ func (h *ChatHandler) writeStreamResponses(c *gin.Context, agentID, agentType st
 				return
 			}
 
-			if !sessionCreated {
-				h.ensureSession(c, agentID, agentType, resp.GetSessionId())
-				sessionCreated = true
+			respSessionID := resp.GetSessionId()
+			if !sessionHandled && respSessionID != "" {
+				compositeRespSessionID := session.ComposeSessionID(agentType, respSessionID)
+				c.Header("X-Session-Id", compositeRespSessionID)
+				if requestSessionID != compositeRespSessionID {
+					h.logger.Info("session updated",
+						zap.String("agent_id", agentID),
+						zap.String("request_session_id", requestSessionID),
+						zap.String("response_session_id", compositeRespSessionID),
+					)
+					h.ensureSession(c, agentID, agentType, respSessionID)
+				}
+				sessionHandled = true
 			}
 
 			if resp.GetDone() {
@@ -319,18 +361,40 @@ func (h *ChatHandler) writeStreamResponses(c *gin.Context, agentID, agentType st
 				return
 			}
 
-			chunk := openai.FromAgentResponseChunk(resp, agentType)
-			data, _ := json.Marshal(chunk)
-			fmt.Fprintf(c.Writer, "data: %s\n\n", data)
-			if flusher != nil {
-				flusher.Flush()
+			if chk := resp.GetChunk(); chk != nil {
+				accumulated := chk.GetContent()
+				accReasoning := chk.GetReasoningContent()
+				deltaContent := ""
+				deltaReasoning := ""
+				if len(accumulated) > sentContentLen {
+					deltaContent = accumulated[sentContentLen:]
+					sentContentLen = len(accumulated)
+				}
+				if len(accReasoning) > sentReasoningLen {
+					deltaReasoning = accReasoning[sentReasoningLen:]
+					sentReasoningLen = len(accReasoning)
+				}
+				if deltaContent != "" || deltaReasoning != "" {
+					chunk := openai.MakeDeltaChunk(resp.GetRequestId(), agentType, deltaContent, deltaReasoning)
+					data, _ := json.Marshal(chunk)
+					fmt.Fprintf(c.Writer, "data: %s\n\n", data)
+					if flusher != nil {
+						flusher.Flush()
+					}
+				}
 			}
 
 		case <-time.After(responseTimeout):
+			h.logger.Warn("stream response timeout",
+				zap.String("agent_id", agentID),
+			)
 			respondError(c, errcode.ErrTimeout("agent stream timed out"))
 			return
 
 		case <-c.Request.Context().Done():
+			h.logger.Warn("stream client disconnected",
+				zap.String("agent_id", agentID),
+			)
 			return
 		}
 	}

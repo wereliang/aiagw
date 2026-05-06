@@ -67,8 +67,27 @@ func FromAgentResponse(resp *pb.AgentResponse, model string) *ChatCompletionResp
 	}
 }
 
-// FromAgentResponseChunk converts a gRPC AgentResponse into an OpenAI
-// ChatCompletionChunk suitable for streaming replies (SSE).
+// MakeDeltaChunk creates an OpenAI ChatCompletionChunk with content and/or reasoning delta.
+func MakeDeltaChunk(requestID, model string, content, reasoning string) *ChatCompletionChunk {
+	delta := Delta{}
+	if content != "" {
+		delta.Content = &content
+	}
+	if reasoning != "" {
+		delta.ReasoningContent = &reasoning
+	}
+	return &ChatCompletionChunk{
+		ID:     fmt.Sprintf("chatcmpl-%s", requestID),
+		Object: "chat.completion.chunk",
+		Model:  model,
+		Choices: []ChunkChoice{
+			{
+				Index: 0,
+				Delta: delta,
+			},
+		},
+	}
+}
 func FromAgentResponseChunk(resp *pb.AgentResponse, model string) *ChatCompletionChunk {
 	chunk := &ChatCompletionChunk{
 		ID:     fmt.Sprintf("chatcmpl-%s", resp.GetRequestId()),
@@ -88,16 +107,20 @@ func FromAgentResponseChunk(resp *pb.AgentResponse, model string) *ChatCompletio
 		return chunk
 	}
 
-	var content *string
+	delta := Delta{}
 	if c := resp.GetChunk(); c != nil {
-		s := c.GetContent()
-		content = &s
+		if s := c.GetContent(); s != "" {
+			delta.Content = &s
+		}
+		if r := c.GetReasoningContent(); r != "" {
+			delta.ReasoningContent = &r
+		}
 	}
 
 	chunk.Choices = []ChunkChoice{
 		{
 			Index: 0,
-			Delta: Delta{Content: content},
+			Delta: delta,
 		},
 	}
 	return chunk

@@ -32,6 +32,7 @@ type StreamHandler func(ctx context.Context, req *Request, stream ResponseStream
 
 type ResponseStream interface {
 	SendChunk(content string) error
+	SendThinkingChunk(reasoning string) error
 	SendMessage(role, content string) error
 	SetSessionID(id string)
 }
@@ -359,6 +360,20 @@ func (rs *responseStream) SendChunk(content string) error {
 		SessionId: rs.sessionID,
 		Content: &pb.AgentResponse_Chunk{
 			Chunk: &pb.StreamChunk{Content: content},
+		},
+		Done: false,
+	})
+	return nil
+}
+
+func (rs *responseStream) SendThinkingChunk(reasoning string) error {
+	rs.sent = true
+
+	rs.agent.send(&pb.AgentResponse{
+		RequestId: rs.requestID,
+		SessionId: rs.sessionID,
+		Content: &pb.AgentResponse_Chunk{
+			Chunk: &pb.StreamChunk{ReasoningContent: reasoning},
 		},
 		Done: false,
 	})

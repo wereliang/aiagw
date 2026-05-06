@@ -1,0 +1,48 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: claude-proxy-agent
+  namespace: aiagw
+spec:
+  serviceName: claude-proxy-agent
+  replicas: 2
+  selector:
+    matchLabels:
+      app: claude-proxy-agent
+  template:
+    metadata:
+      labels:
+        app: claude-proxy-agent
+    spec:
+      containers:
+        - name: claude-proxy-agent
+          image: aiagw/claude-proxy-agent:latest
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: AGENT_ID
+              value: "$(POD_NAME)"
+            - name: AGENT_TYPE
+              value: "claude"
+            - name: GATEWAY_ADDR
+              value: "gateway.aiagw.svc.cluster.local:19090"
+            - name: ANTHROPIC_AUTH_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: claude-proxy-secrets
+                  key: ANTHROPIC_AUTH_TOKEN
+            - name: ANTHROPIC_BASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: claude-proxy-secrets
+                  key: ANTHROPIC_BASE_URL
+          resources:
+            requests:
+              cpu: 200m
+              memory: 256Mi
+            limits:
+              cpu: "2"
+              memory: 1Gi

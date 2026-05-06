@@ -3,6 +3,10 @@ server:
   grpc_port: 19090
   internal_grpc_port: 19091
   instance_id: ""
+  # advertise_addr: full address for peer-to-peer communication in K8s
+  # e.g. "gateway-0.gateway-headless.aiagw.svc.cluster.local:19091"
+  # Can be overridden by ADVERTISE_ADDR env var
+  advertise_addr: ""
 
 redis:
   addr: "localhost:6379"

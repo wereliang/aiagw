@@ -23,6 +23,7 @@ type ServerConfig struct {
 	GRPCPort         int    `yaml:"grpc_port"`
 	InternalGRPCPort int    `yaml:"internal_grpc_port"`
 	InstanceID       string `yaml:"instance_id"`
+	AdvertiseAddr    string `yaml:"advertise_addr"`
 }
 
 type RedisConfig struct {
@@ -60,8 +61,15 @@ func Load(path string) (*Config, error) {
 		return nil, fmt.Errorf("parse config file: %w", err)
 	}
 
+	if v := os.Getenv("INSTANCE_ID"); v != "" {
+		cfg.Server.InstanceID = v
+	}
 	if cfg.Server.InstanceID == "" {
 		cfg.Server.InstanceID = uuid.New().String()
+	}
+
+	if v := os.Getenv("ADVERTISE_ADDR"); v != "" {
+		cfg.Server.AdvertiseAddr = v
 	}
 
 	return cfg, nil

@@ -2,8 +2,9 @@ package openai
 
 // Message represents a single message in a chat conversation.
 type Message struct {
-	Role    string `json:"role"`
-	Content string `json:"content"`
+	Role             string `json:"role"`
+	Content          string `json:"content"`
+	ReasoningContent string `json:"reasoning_content,omitempty"`
 }
 
 // ChatCompletionRequest represents an OpenAI-compatible chat completion request.
@@ -41,8 +42,9 @@ type ChatCompletionResponse struct {
 
 // Delta represents the incremental content in a streaming chunk.
 type Delta struct {
-	Role    *string `json:"role,omitempty"`
-	Content *string `json:"content,omitempty"`
+	Role             *string `json:"role,omitempty"`
+	Content          *string `json:"content,omitempty"`
+	ReasoningContent *string `json:"reasoning_content,omitempty"`
 }
 
 // ChunkChoice represents a single choice in a streaming chunk.

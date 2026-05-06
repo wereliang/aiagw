@@ -54,6 +54,7 @@ message ChatMessage {
 
 message StreamChunk {
   string content = 1;
+  string reasoning_content = 2;
 }
 
 message Heartbeat {

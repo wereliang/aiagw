@@ -36,6 +36,9 @@ configs/gateway2.yaml
 .env.*
 !.env.example
 
+# K8s secrets (use secrets.example.yaml as template)
+deploy/k8s/secrets.yaml
+
 # Vendor (if not committed)
 # vendor/
 
