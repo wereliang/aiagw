@@ -3,7 +3,7 @@
 import grpc
 import warnings
 
-import agent_pb2 as agent__pb2
+import agent_pb2 as api_dot_proto_dot_agent__pb2
 
 GRPC_GENERATED_VERSION = '1.80.0'
 GRPC_VERSION = grpc.__version__
@@ -18,7 +18,7 @@ except ImportError:
 if _version_not_supported:
     raise RuntimeError(
         f'The grpc package installed is at version {GRPC_VERSION},'
-        + ' but the generated code in agent_pb2_grpc.py depends on'
+        + ' but the generated code in api/proto/agent_pb2_grpc.py depends on'
         + f' grpcio>={GRPC_GENERATED_VERSION}.'
         + f' Please upgrade your grpc module to grpcio>={GRPC_GENERATED_VERSION}'
         + f' or downgrade your generated code using grpcio-tools<={GRPC_VERSION}.'
@@ -36,8 +36,8 @@ class AgentGatewayStub(object):
         """
         self.Connect = channel.stream_stream(
                 '/agentgw.AgentGateway/Connect',
-                request_serializer=agent__pb2.AgentMessage.SerializeToString,
-                response_deserializer=agent__pb2.GatewayMessage.FromString,
+                request_serializer=api_dot_proto_dot_agent__pb2.AgentMessage.SerializeToString,
+                response_deserializer=api_dot_proto_dot_agent__pb2.GatewayMessage.FromString,
                 _registered_method=True)
 
 
@@ -55,8 +55,8 @@ def add_AgentGatewayServicer_to_server(servicer, server):
     rpc_method_handlers = {
             'Connect': grpc.stream_stream_rpc_method_handler(
                     servicer.Connect,
-                    request_deserializer=agent__pb2.AgentMessage.FromString,
-                    response_serializer=agent__pb2.GatewayMessage.SerializeToString,
+                    request_deserializer=api_dot_proto_dot_agent__pb2.AgentMessage.FromString,
+                    response_serializer=api_dot_proto_dot_agent__pb2.GatewayMessage.SerializeToString,
             ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
@@ -84,8 +84,8 @@ class AgentGateway(object):
             request_iterator,
             target,
             '/agentgw.AgentGateway/Connect',
-            agent__pb2.AgentMessage.SerializeToString,
-            agent__pb2.GatewayMessage.FromString,
+            api_dot_proto_dot_agent__pb2.AgentMessage.SerializeToString,
+            api_dot_proto_dot_agent__pb2.GatewayMessage.FromString,
             options,
             channel_credentials,
             insecure,

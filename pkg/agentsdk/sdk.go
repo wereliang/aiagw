@@ -2,6 +2,7 @@ package agentsdk
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"log"
@@ -22,8 +23,9 @@ type Request struct {
 }
 
 type Message struct {
-	Role    string
-	Content string
+	Role       string
+	Content    string
+	RawContent json.RawMessage
 }
 
 type Handler func(ctx context.Context, req *Request) Response
@@ -302,7 +304,7 @@ func (a *Agent) handleRequest(ctx context.Context, req *pb.AgentRequest) {
 		Content: &pb.AgentResponse_Message{
 			Message: &pb.ChatMessage{
 				Role:    resp.Role,
-				Content: resp.Content,
+				Content: toJSONContent(resp.Content),
 			},
 		},
 		Done: true,
@@ -387,7 +389,7 @@ func (rs *responseStream) SendMessage(role, content string) error {
 		RequestId: rs.requestID,
 		SessionId: rs.sessionID,
 		Content: &pb.AgentResponse_Message{
-			Message: &pb.ChatMessage{Role: role, Content: content},
+			Message: &pb.ChatMessage{Role: role, Content: toJSONContent(content)},
 		},
 		Done: true,
 	})
@@ -400,17 +402,26 @@ func (rs *responseStream) finish() {
 			RequestId: rs.requestID,
 			SessionId: rs.sessionID,
 			Content: &pb.AgentResponse_Message{
-				Message: &pb.ChatMessage{Role: "assistant", Content: ""},
+				Message: &pb.ChatMessage{Role: "assistant", Content: toJSONContent("")},
 			},
 			Done: true,
 		})
 	}
 }
 
+func toJSONContent(s string) []byte {
+	b, _ := json.Marshal(s)
+	return b
+}
+
 func toSDKRequest(req *pb.AgentRequest) *Request {
 	msgs := make([]Message, len(req.Messages))
 	for i, m := range req.Messages {
-		msgs[i] = Message{Role: m.Role, Content: m.Content}
+		var content string
+		if err := json.Unmarshal(m.Content, &content); err != nil {
+			content = string(m.Content)
+		}
+		msgs[i] = Message{Role: m.Role, Content: content, RawContent: m.Content}
 	}
 	return &Request{
 		RequestID: req.RequestId,

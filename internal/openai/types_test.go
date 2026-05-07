@@ -44,7 +44,7 @@ func TestChatCompletionResponseMarshal(t *testing.T) {
 		Choices: []Choice{
 			{
 				Index:        0,
-				Message:      &Message{Role: "assistant", Content: "Hello!"},
+				Message:      &Message{Role: "assistant", Content: json.RawMessage(`"Hello!"`)},
 				FinishReason: stringPtr("stop"),
 			},
 		},

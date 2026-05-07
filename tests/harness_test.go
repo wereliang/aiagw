@@ -69,12 +69,11 @@ func newTestHarness(t *testing.T) *TestHarness {
 	})
 
 	validAPIKeys := map[string]bool{defaultTestAPIKey: true}
+	logger := zap.NewNop()
 
-	chatHandler := handler.NewChatHandler(sessionMgr, grpcSrv, rtr, pool, forwarder, gatewayInstance)
+	chatHandler := handler.NewChatHandler(sessionMgr, grpcSrv, rtr, pool, forwarder, gatewayInstance, logger)
 	modelsHandler := handler.NewModelsHandler(pool)
 	sessionHandler := handler.NewSessionHandler(sessionMgr)
-
-	logger := zap.NewNop()
 
 	grpcLis, err := net.Listen("tcp", "localhost:0")
 	if err != nil {
@@ -201,6 +200,8 @@ func (h *TestHarness) ConnectEchoAgent(t *testing.T, agentID, agentType string) 
 		if sessionID == "" {
 			sessionID = "sess-" + req.RequestId
 		}
+		var plainText string
+		json.Unmarshal(lastMsg.Content, &plainText)
 		stream.Send(&pb.AgentMessage{
 			Payload: &pb.AgentMessage_Response{
 				Response: &pb.AgentResponse{
@@ -209,7 +210,7 @@ func (h *TestHarness) ConnectEchoAgent(t *testing.T, agentID, agentType string) 
 					Content: &pb.AgentResponse_Message{
 						Message: &pb.ChatMessage{
 							Role:    "assistant",
-							Content: "echo: " + lastMsg.Content,
+							Content: []byte("echo: " + plainText),
 						},
 					},
 					Done: true,
@@ -227,16 +228,20 @@ func (h *TestHarness) ConnectStreamAgent(t *testing.T, agentID, agentType string
 		if sessionID == "" {
 			sessionID = "sess-" + req.RequestId
 		}
-		words := strings.Fields(lastMsg.Content)
+		var plainText string
+		json.Unmarshal(lastMsg.Content, &plainText)
+		words := strings.Fields(plainText)
 
+		var accumulated strings.Builder
 		for _, word := range words {
+			accumulated.WriteString(word + " ")
 			stream.Send(&pb.AgentMessage{
 				Payload: &pb.AgentMessage_Response{
 					Response: &pb.AgentResponse{
 						RequestId: req.RequestId,
 						SessionId: sessionID,
 						Content: &pb.AgentResponse_Chunk{
-							Chunk: &pb.StreamChunk{Content: word + " "},
+							Chunk: &pb.StreamChunk{Content: accumulated.String()},
 						},
 						Done: false,
 					},
@@ -252,7 +257,7 @@ func (h *TestHarness) ConnectStreamAgent(t *testing.T, agentID, agentType string
 					Content: &pb.AgentResponse_Message{
 						Message: &pb.ChatMessage{
 							Role:    "assistant",
-							Content: strings.Join(words, " "),
+							Content: []byte(strings.Join(words, " ")),
 						},
 					},
 					Done: true,

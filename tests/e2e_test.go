@@ -49,7 +49,7 @@ func TestE2E_Auth_InvalidKey(t *testing.T) {
 
 	resp := h.DoChat(t, ChatRequestOpts{
 		Model:    "echo",
-		Messages: []openai.Message{{Role: "user", Content: "hi"}},
+		Messages: []openai.Message{{Role: "user", Content: json.RawMessage(`"hi"`)}},
 		APIKey:   "bad-key",
 	})
 	defer resp.Body.Close()
@@ -65,7 +65,7 @@ func TestE2E_Auth_ValidKey(t *testing.T) {
 
 	resp := h.DoChat(t, ChatRequestOpts{
 		Model:    "echo",
-		Messages: []openai.Message{{Role: "user", Content: "hi"}},
+		Messages: []openai.Message{{Role: "user", Content: json.RawMessage(`"hi"`)}},
 	})
 	defer resp.Body.Close()
 
@@ -83,7 +83,7 @@ func TestE2E_Chat_NonStream_Echo(t *testing.T) {
 
 	resp := h.DoChat(t, ChatRequestOpts{
 		Model:    "echo",
-		Messages: []openai.Message{{Role: "user", Content: "hello world"}},
+		Messages: []openai.Message{{Role: "user", Content: json.RawMessage(`"hello world"`)}},
 	})
 
 	if resp.StatusCode != http.StatusOK {
@@ -99,8 +99,10 @@ func TestE2E_Chat_NonStream_Echo(t *testing.T) {
 	if chatResp.Choices[0].Message == nil {
 		t.Fatal("expected message in choice")
 	}
-	if got := chatResp.Choices[0].Message.Content; got != "echo: hello world" {
-		t.Errorf("content = %q, want %q", got, "echo: hello world")
+	var gotContent string
+	json.Unmarshal(chatResp.Choices[0].Message.Content, &gotContent)
+	if gotContent != "echo: hello world" {
+		t.Errorf("content = %q, want %q", gotContent, "echo: hello world")
 	}
 }
 
@@ -123,7 +125,7 @@ func TestE2E_Chat_NonStream_NoAgent(t *testing.T) {
 
 	resp := h.DoChat(t, ChatRequestOpts{
 		Model:    "nonexistent",
-		Messages: []openai.Message{{Role: "user", Content: "hello"}},
+		Messages: []openai.Message{{Role: "user", Content: json.RawMessage(`"hello"`)}},
 	})
 	defer resp.Body.Close()
 
@@ -138,7 +140,7 @@ func TestE2E_Chat_NonStream_ResponseFormat(t *testing.T) {
 
 	resp := h.DoChat(t, ChatRequestOpts{
 		Model:    "echo",
-		Messages: []openai.Message{{Role: "user", Content: "test"}},
+		Messages: []openai.Message{{Role: "user", Content: json.RawMessage(`"test"`)}},
 	})
 
 	chatResp := readChatResponse(t, resp)
@@ -166,7 +168,7 @@ func TestE2E_Chat_NonStream_SessionCreated(t *testing.T) {
 
 	resp := h.DoChat(t, ChatRequestOpts{
 		Model:    "echo",
-		Messages: []openai.Message{{Role: "user", Content: "test"}},
+		Messages: []openai.Message{{Role: "user", Content: json.RawMessage(`"test"`)}},
 	})
 	defer resp.Body.Close()
 
@@ -187,7 +189,7 @@ func TestE2E_Chat_Stream_Basic(t *testing.T) {
 
 	resp := h.DoChat(t, ChatRequestOpts{
 		Model:    "stream-echo",
-		Messages: []openai.Message{{Role: "user", Content: "hello world"}},
+		Messages: []openai.Message{{Role: "user", Content: json.RawMessage(`"hello world"`)}},
 		Stream:   true,
 	})
 	defer resp.Body.Close()
@@ -218,7 +220,7 @@ func TestE2E_Chat_Stream_ContentAccumulation(t *testing.T) {
 
 	resp := h.DoChat(t, ChatRequestOpts{
 		Model:    "stream-echo",
-		Messages: []openai.Message{{Role: "user", Content: "foo bar baz"}},
+		Messages: []openai.Message{{Role: "user", Content: json.RawMessage(`"foo bar baz"`)}},
 		Stream:   true,
 	})
 	defer resp.Body.Close()
@@ -248,7 +250,7 @@ func TestE2E_Chat_Stream_ChunkFormat(t *testing.T) {
 
 	resp := h.DoChat(t, ChatRequestOpts{
 		Model:    "stream-echo",
-		Messages: []openai.Message{{Role: "user", Content: "hello"}},
+		Messages: []openai.Message{{Role: "user", Content: json.RawMessage(`"hello"`)}},
 		Stream:   true,
 	})
 	defer resp.Body.Close()
@@ -281,7 +283,7 @@ func TestE2E_Chat_Stream_FinalChunk(t *testing.T) {
 
 	resp := h.DoChat(t, ChatRequestOpts{
 		Model:    "stream-echo",
-		Messages: []openai.Message{{Role: "user", Content: "hello"}},
+		Messages: []openai.Message{{Role: "user", Content: json.RawMessage(`"hello"`)}},
 		Stream:   true,
 	})
 	defer resp.Body.Close()
@@ -307,7 +309,7 @@ func TestE2E_Chat_Stream_SessionCreated(t *testing.T) {
 
 	resp := h.DoChat(t, ChatRequestOpts{
 		Model:    "stream-echo",
-		Messages: []openai.Message{{Role: "user", Content: "hi"}},
+		Messages: []openai.Message{{Role: "user", Content: json.RawMessage(`"hi"`)}},
 		Stream:   true,
 	})
 	defer resp.Body.Close()
@@ -333,7 +335,7 @@ func TestE2E_Session_Reuse(t *testing.T) {
 
 	resp1 := h.DoChat(t, ChatRequestOpts{
 		Model:    "echo",
-		Messages: []openai.Message{{Role: "user", Content: "first"}},
+		Messages: []openai.Message{{Role: "user", Content: json.RawMessage(`"first"`)}},
 	})
 	chatResp1 := readChatResponse(t, resp1)
 	sessionID := resp1.Header.Get("X-Session-Id")
@@ -343,7 +345,7 @@ func TestE2E_Session_Reuse(t *testing.T) {
 
 	resp2 := h.DoChat(t, ChatRequestOpts{
 		Model:     "echo",
-		Messages:  []openai.Message{{Role: "user", Content: "second"}},
+		Messages:  []openai.Message{{Role: "user", Content: json.RawMessage(`"second"`)}},
 		SessionID: sessionID,
 	})
 	chatResp2 := readChatResponse(t, resp2)
@@ -353,11 +355,14 @@ func TestE2E_Session_Reuse(t *testing.T) {
 		t.Errorf("second request returned session %q, want %q", returnedSessionID, sessionID)
 	}
 
-	if chatResp1.Choices[0].Message.Content != "echo: first" {
-		t.Errorf("first response = %q", chatResp1.Choices[0].Message.Content)
+	var content1, content2 string
+	json.Unmarshal(chatResp1.Choices[0].Message.Content, &content1)
+	json.Unmarshal(chatResp2.Choices[0].Message.Content, &content2)
+	if content1 != "echo: first" {
+		t.Errorf("first response = %q", content1)
 	}
-	if chatResp2.Choices[0].Message.Content != "echo: second" {
-		t.Errorf("second response = %q", chatResp2.Choices[0].Message.Content)
+	if content2 != "echo: second" {
+		t.Errorf("second response = %q", content2)
 	}
 }
 
@@ -367,7 +372,7 @@ func TestE2E_Session_Delete(t *testing.T) {
 
 	resp := h.DoChat(t, ChatRequestOpts{
 		Model:    "echo",
-		Messages: []openai.Message{{Role: "user", Content: "hi"}},
+		Messages: []openai.Message{{Role: "user", Content: json.RawMessage(`"hi"`)}},
 	})
 	readChatResponse(t, resp)
 	sessionID := resp.Header.Get("X-Session-Id")
@@ -413,7 +418,7 @@ func TestE2E_Session_CompositeFormat(t *testing.T) {
 					RequestId: req.RequestId,
 					SessionId: "agent-sess-123",
 					Content: &pb.AgentResponse_Message{
-						Message: &pb.ChatMessage{Role: "assistant", Content: "ok"},
+						Message: &pb.ChatMessage{Role: "assistant", Content: []byte("ok")},
 					},
 					Done: true,
 				},
@@ -423,7 +428,7 @@ func TestE2E_Session_CompositeFormat(t *testing.T) {
 
 	resp := h.DoChat(t, ChatRequestOpts{
 		Model:    "mytype",
-		Messages: []openai.Message{{Role: "user", Content: "hi"}},
+		Messages: []openai.Message{{Role: "user", Content: json.RawMessage(`"hi"`)}},
 	})
 	readChatResponse(t, resp)
 
@@ -451,7 +456,7 @@ func TestE2E_Routing_ByModel(t *testing.T) {
 
 	resp := h.DoChat(t, ChatRequestOpts{
 		Model:    "type-a",
-		Messages: []openai.Message{{Role: "user", Content: "hi"}},
+		Messages: []openai.Message{{Role: "user", Content: json.RawMessage(`"hi"`)}},
 	})
 	chatResp := readChatResponse(t, resp)
 	if chatResp.Model != "type-a" {
@@ -460,7 +465,7 @@ func TestE2E_Routing_ByModel(t *testing.T) {
 
 	resp2 := h.DoChat(t, ChatRequestOpts{
 		Model:    "type-b",
-		Messages: []openai.Message{{Role: "user", Content: "hi"}},
+		Messages: []openai.Message{{Role: "user", Content: json.RawMessage(`"hi"`)}},
 	})
 	chatResp2 := readChatResponse(t, resp2)
 	if chatResp2.Model != "type-b" {
@@ -475,7 +480,7 @@ func TestE2E_Routing_AgentDisconnect(t *testing.T) {
 	// First request succeeds
 	resp := h.DoChat(t, ChatRequestOpts{
 		Model:    "disc-type",
-		Messages: []openai.Message{{Role: "user", Content: "hi"}},
+		Messages: []openai.Message{{Role: "user", Content: json.RawMessage(`"hi"`)}},
 	})
 	readChatResponse(t, resp)
 
@@ -487,7 +492,7 @@ func TestE2E_Routing_AgentDisconnect(t *testing.T) {
 	// Second request should fail (no agent available)
 	resp2 := h.DoChat(t, ChatRequestOpts{
 		Model:    "disc-type",
-		Messages: []openai.Message{{Role: "user", Content: "hi"}},
+		Messages: []openai.Message{{Role: "user", Content: json.RawMessage(`"hi"`)}},
 	})
 	defer resp2.Body.Close()
 
@@ -505,7 +510,7 @@ func TestE2E_Agent_StreamingAgentNonStreamRequest(t *testing.T) {
 
 	resp := h.DoChat(t, ChatRequestOpts{
 		Model:    "hybrid",
-		Messages: []openai.Message{{Role: "user", Content: "foo bar baz"}},
+		Messages: []openai.Message{{Role: "user", Content: json.RawMessage(`"foo bar baz"`)}},
 		Stream:   false,
 	})
 
@@ -514,7 +519,8 @@ func TestE2E_Agent_StreamingAgentNonStreamRequest(t *testing.T) {
 		t.Fatal("expected message in response")
 	}
 
-	got := chatResp.Choices[0].Message.Content
+	var got string
+	json.Unmarshal(chatResp.Choices[0].Message.Content, &got)
 	// Stream agent sends chunks ("foo ", "bar ", "baz ") then a done message ("foo bar baz").
 	// collectNonStreamResponse accumulates all of them.
 	want := "foo bar baz foo bar baz"
@@ -577,13 +583,15 @@ func TestE2E_Forward_RemoteAgent(t *testing.T) {
 				continue
 			}
 			lastMsg := req.Messages[len(req.Messages)-1]
+			var plainText string
+			json.Unmarshal(lastMsg.Content, &plainText)
 			streamA.Send(&pb.AgentMessage{
 				Payload: &pb.AgentMessage_Response{
 					Response: &pb.AgentResponse{
 						RequestId: req.RequestId,
 						SessionId: "remote-sess-" + req.RequestId,
 						Content: &pb.AgentResponse_Message{
-							Message: &pb.ChatMessage{Role: "assistant", Content: "remote: " + lastMsg.Content},
+							Message: &pb.ChatMessage{Role: "assistant", Content: []byte("remote: " + plainText)},
 						},
 						Done: true,
 					},
@@ -609,10 +617,10 @@ func TestE2E_Forward_RemoteAgent(t *testing.T) {
 
 	rtrB := router.New(poolB)
 	validKeys := map[string]bool{"fwd-key": true}
-	chatHandlerB := handler.NewChatHandler(sessionMgrB, grpcSrvB, rtrB, poolB, forwarderB, "gw-b")
+	logger := zap.NewNop()
+	chatHandlerB := handler.NewChatHandler(sessionMgrB, grpcSrvB, rtrB, poolB, forwarderB, "gw-b", logger)
 	modelsHandlerB := handler.NewModelsHandler(poolB)
 	sessionHandlerB := handler.NewSessionHandler(sessionMgrA)
-	logger := zap.NewNop()
 
 	httpLisB, _ := net.Listen("tcp", "localhost:0")
 	httpPortB := httpLisB.Addr().(*net.TCPAddr).Port
@@ -622,7 +630,7 @@ func TestE2E_Forward_RemoteAgent(t *testing.T) {
 	// Send request to GW-B; agent is on GW-A
 	reqBody := openai.ChatCompletionRequest{
 		Model:    "remote-echo",
-		Messages: []openai.Message{{Role: "user", Content: "forwarded"}},
+		Messages: []openai.Message{{Role: "user", Content: json.RawMessage(`"forwarded"`)}},
 	}
 	bodyBytes, _ := json.Marshal(reqBody)
 	httpReq, _ := http.NewRequest(http.MethodPost, fmt.Sprintf("http://%s/v1/chat/completions", httpLisB.Addr().String()), strings.NewReader(string(bodyBytes)))
@@ -648,8 +656,10 @@ func TestE2E_Forward_RemoteAgent(t *testing.T) {
 	if len(chatResp.Choices) == 0 || chatResp.Choices[0].Message == nil {
 		t.Fatal("expected message in forwarded response")
 	}
-	if got := chatResp.Choices[0].Message.Content; got != "remote: forwarded" {
-		t.Errorf("content = %q, want %q", got, "remote: forwarded")
+	var fwdContent string
+	json.Unmarshal(chatResp.Choices[0].Message.Content, &fwdContent)
+	if fwdContent != "remote: forwarded" {
+		t.Errorf("content = %q, want %q", fwdContent, "remote: forwarded")
 	}
 }
 

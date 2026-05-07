@@ -206,7 +206,7 @@ func TestResponseHandler(t *testing.T) {
 				Content: &pb.AgentResponse_Message{
 					Message: &pb.ChatMessage{
 						Role:    "assistant",
-						Content: "Hello!",
+						Content: []byte("Hello!"),
 					},
 				},
 				Done: true,
@@ -222,7 +222,7 @@ func TestResponseHandler(t *testing.T) {
 		if resp.GetRequestId() != "req-42" {
 			t.Errorf("RequestId = %q, want %q", resp.GetRequestId(), "req-42")
 		}
-		if resp.GetMessage().GetContent() != "Hello!" {
+		if string(resp.GetMessage().GetContent()) != "Hello!" {
 			t.Errorf("Content = %q, want %q", resp.GetMessage().GetContent(), "Hello!")
 		}
 		if !resp.GetDone() {

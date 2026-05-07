@@ -1,6 +1,7 @@
 package openai
 
 import (
+	"encoding/json"
 	"fmt"
 	"strconv"
 
@@ -15,7 +16,7 @@ func ToAgentRequest(requestID, sessionID string, req *ChatCompletionRequest) *pb
 	for i, m := range req.Messages {
 		messages[i] = &pb.ChatMessage{
 			Role:    m.Role,
-			Content: m.Content,
+			Content: []byte(m.Content),
 		}
 	}
 
@@ -46,9 +47,13 @@ func FromAgentResponse(resp *pb.AgentResponse, model string) *ChatCompletionResp
 
 	var msg *Message
 	if m := resp.GetMessage(); m != nil {
+		content := m.GetContent()
+		if len(content) == 0 {
+			content = []byte(`""`)
+		}
 		msg = &Message{
 			Role:    m.GetRole(),
-			Content: m.GetContent(),
+			Content: json.RawMessage(content),
 		}
 	}
 

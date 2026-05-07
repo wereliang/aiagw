@@ -47,11 +47,10 @@ func TestEndToEnd_ChatCompletions(t *testing.T) {
 	grpcSrv := agent.NewGRPCServer(pool)
 	rtr := router.New(pool)
 
-	chatHandler := handler.NewChatHandler(sessionMgr, grpcSrv, rtr, pool, nil, gatewayInstance)
+	logger := zap.NewNop()
+	chatHandler := handler.NewChatHandler(sessionMgr, grpcSrv, rtr, pool, nil, gatewayInstance, logger)
 	modelsHandler := handler.NewModelsHandler(pool)
 	sessionHandler := handler.NewSessionHandler(sessionMgr)
-
-	logger := zap.NewNop()
 
 	grpcLis, err := net.Listen("tcp", "localhost:0")
 	if err != nil {
@@ -127,6 +126,8 @@ func TestEndToEnd_ChatCompletions(t *testing.T) {
 			if sessionID == "" {
 				sessionID = "agent-session-" + req.RequestId
 			}
+			var plainText string
+			json.Unmarshal(lastMsg.Content, &plainText)
 			if sendErr := stream.Send(&pb.AgentMessage{
 				Payload: &pb.AgentMessage_Response{
 					Response: &pb.AgentResponse{
@@ -135,7 +136,7 @@ func TestEndToEnd_ChatCompletions(t *testing.T) {
 						Content: &pb.AgentResponse_Message{
 							Message: &pb.ChatMessage{
 								Role:    "assistant",
-								Content: "echo: " + lastMsg.Content,
+								Content: []byte("echo: " + plainText),
 							},
 						},
 						Done: true,
@@ -152,7 +153,7 @@ func TestEndToEnd_ChatCompletions(t *testing.T) {
 	reqBody := openai.ChatCompletionRequest{
 		Model: "echo",
 		Messages: []openai.Message{
-			{Role: "user", Content: "hello world"},
+			{Role: "user", Content: json.RawMessage(`"hello world"`)},
 		},
 	}
 	bodyBytes, err := json.Marshal(reqBody)
@@ -202,8 +203,10 @@ func TestEndToEnd_ChatCompletions(t *testing.T) {
 	}
 
 	expectedContent := "echo: hello world"
-	if choice.Message.Content != expectedContent {
-		t.Errorf("expected content %q, got %q", expectedContent, choice.Message.Content)
+	var gotContent string
+	json.Unmarshal(choice.Message.Content, &gotContent)
+	if gotContent != expectedContent {
+		t.Errorf("expected content %q, got %q", expectedContent, gotContent)
 	}
 
 	sessionID := resp.Header.Get("X-Session-Id")

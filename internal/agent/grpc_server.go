@@ -163,11 +163,20 @@ func (s *GRPCServer) recvLoop(conn *agentConn) error {
 		case *pb.AgentMessage_Heartbeat:
 			hbErr := s.pool.UpdateHeartbeat(conn.stream.Context(), conn.info.AgentType, conn.info.ID)
 			if hbErr == ErrAgentNotFound {
-				s.logger.Warn("agent expired in Redis, forcing disconnect for reconnection",
+				s.logger.Warn("agent expired in Redis, re-registering",
 					zap.String("agent_id", conn.info.ID),
 					zap.String("agent_type", conn.info.AgentType),
 				)
-				return status.Errorf(codes.Aborted, "agent expired, please reconnect")
+				if regErr := s.pool.ReRegister(conn.stream.Context(), conn.info); regErr != nil {
+					s.logger.Error("failed to re-register agent, forcing disconnect",
+						zap.String("agent_id", conn.info.ID),
+						zap.Error(regErr),
+					)
+					return status.Errorf(codes.Aborted, "agent expired, please reconnect")
+				}
+				s.logger.Info("agent re-registered successfully",
+					zap.String("agent_id", conn.info.ID),
+				)
 			} else if hbErr != nil {
 				s.logger.Error("failed to update heartbeat",
 					zap.String("agent_id", conn.info.ID),

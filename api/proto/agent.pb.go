@@ -446,7 +446,7 @@ func (*AgentResponse_Chunk) isAgentResponse_Content() {}
 type ChatMessage struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Role          string                 `protobuf:"bytes,1,opt,name=role,proto3" json:"role,omitempty"`
-	Content       string                 `protobuf:"bytes,2,opt,name=content,proto3" json:"content,omitempty"`
+	Content       []byte                 `protobuf:"bytes,2,opt,name=content,proto3" json:"content,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -488,11 +488,11 @@ func (x *ChatMessage) GetRole() string {
 	return ""
 }
 
-func (x *ChatMessage) GetContent() string {
+func (x *ChatMessage) GetContent() []byte {
 	if x != nil {
 		return x.Content
 	}
-	return ""
+	return nil
 }
 
 type StreamChunk struct {
@@ -637,7 +637,7 @@ const file_api_proto_agent_proto_rawDesc = "" +
 	"\acontent\";\n" +
 	"\vChatMessage\x12\x12\n" +
 	"\x04role\x18\x01 \x01(\tR\x04role\x12\x18\n" +
-	"\acontent\x18\x02 \x01(\tR\acontent\"T\n" +
+	"\acontent\x18\x02 \x01(\fR\acontent\"T\n" +
 	"\vStreamChunk\x12\x18\n" +
 	"\acontent\x18\x01 \x01(\tR\acontent\x12+\n" +
 	"\x11reasoning_content\x18\x02 \x01(\tR\x10reasoningContent\")\n" +

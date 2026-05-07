@@ -95,6 +95,37 @@ func (p *Pool) Register(ctx context.Context, info *AgentInfo) error {
 	return nil
 }
 
+func (p *Pool) ReRegister(ctx context.Context, info *AgentInfo) error {
+	key := agentKey(info.AgentType, info.ID)
+
+	now := time.Now()
+	ttl := p.heartbeatTimeout * 2
+
+	fields := map[string]interface{}{
+		"agent_type":       info.AgentType,
+		"gateway_instance": info.GatewayInstance,
+		"status":           info.Status,
+		"last_heartbeat":   strconv.FormatInt(now.Unix(), 10),
+		"connected_at":     strconv.FormatInt(now.Unix(), 10),
+		"active_sessions":  "0",
+	}
+
+	gwAgentsKey := gatewayAgentsKey(info.GatewayInstance)
+
+	pipe := p.client.TxPipeline()
+	pipe.HSet(ctx, key, fields)
+	pipe.Expire(ctx, key, ttl)
+	pipe.SAdd(ctx, agentTypeKey(info.AgentType), info.ID)
+	pipe.SAdd(ctx, gwAgentsKey, info.AgentType+":"+info.ID)
+	pipe.Expire(ctx, gwAgentsKey, ttl)
+
+	if _, err := pipe.Exec(ctx); err != nil {
+		return fmt.Errorf("failed to re-register agent %s: %w", info.ID, err)
+	}
+
+	return nil
+}
+
 func (p *Pool) Unregister(ctx context.Context, agentID, agentType string) error {
 	key := agentKey(agentType, agentID)
 

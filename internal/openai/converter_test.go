@@ -1,6 +1,7 @@
 package openai
 
 import (
+	"encoding/json"
 	"testing"
 
 	pb "github.com/wereliang/aiagw/api/proto"
@@ -17,8 +18,8 @@ func TestToAgentRequest(t *testing.T) {
 	req := &ChatCompletionRequest{
 		Model: "customer-service",
 		Messages: []Message{
-			{Role: "system", Content: "You are helpful."},
-			{Role: "user", Content: "Hello"},
+			{Role: "system", Content: json.RawMessage(`"You are helpful."`)},
+			{Role: "user", Content: json.RawMessage(`"Hello"`)},
 		},
 		Temperature: &temp,
 		MaxTokens:   &maxTok,
@@ -41,11 +42,11 @@ func TestToAgentRequest(t *testing.T) {
 	if len(msgs) != 2 {
 		t.Fatalf("Messages len = %d, want 2", len(msgs))
 	}
-	if msgs[0].GetRole() != "system" || msgs[0].GetContent() != "You are helpful." {
+	if msgs[0].GetRole() != "system" || string(msgs[0].GetContent()) != `"You are helpful."` {
 		t.Errorf("Messages[0] = {%q, %q}, want {system, You are helpful.}",
 			msgs[0].GetRole(), msgs[0].GetContent())
 	}
-	if msgs[1].GetRole() != "user" || msgs[1].GetContent() != "Hello" {
+	if msgs[1].GetRole() != "user" || string(msgs[1].GetContent()) != `"Hello"` {
 		t.Errorf("Messages[1] = {%q, %q}, want {user, Hello}",
 			msgs[1].GetRole(), msgs[1].GetContent())
 	}
@@ -66,7 +67,7 @@ func TestToAgentRequestNoOptionalParams(t *testing.T) {
 	req := &ChatCompletionRequest{
 		Model: "test-model",
 		Messages: []Message{
-			{Role: "user", Content: "Hi"},
+			{Role: "user", Content: json.RawMessage(`"Hi"`)},
 		},
 	}
 
@@ -85,7 +86,7 @@ func TestFromAgentResponseFull(t *testing.T) {
 		Content: &pb.AgentResponse_Message{
 			Message: &pb.ChatMessage{
 				Role:    "assistant",
-				Content: "Hello! How can I help?",
+				Content: []byte("Hello! How can I help?"),
 			},
 		},
 		Done: true,
@@ -115,7 +116,7 @@ func TestFromAgentResponseFull(t *testing.T) {
 	if choice.Message.Role != "assistant" {
 		t.Errorf("Choice.Message.Role = %q, want %q", choice.Message.Role, "assistant")
 	}
-	if choice.Message.Content != "Hello! How can I help?" {
+	if choice.Message.Content == nil || string(choice.Message.Content) != "Hello! How can I help?" {
 		t.Errorf("Choice.Message.Content = %q, want %q", choice.Message.Content, "Hello! How can I help?")
 	}
 	if choice.FinishReason == nil || *choice.FinishReason != "stop" {

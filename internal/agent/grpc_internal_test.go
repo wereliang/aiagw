@@ -96,7 +96,7 @@ func TestInternalForwardRequest(t *testing.T) {
 		SessionId: "fwd-sess-1",
 		Model:     "gpt-4",
 		Messages: []*pb.ChatMessage{
-			{Role: "user", Content: "Hello from peer gateway"},
+			{Role: "user", Content: []byte("Hello from peer gateway")},
 		},
 	}
 
@@ -142,7 +142,7 @@ func TestInternalForwardRequest(t *testing.T) {
 				Content: &pb.AgentResponse_Message{
 					Message: &pb.ChatMessage{
 						Role:    "assistant",
-						Content: "Hello from agent!",
+						Content: []byte("Hello from agent!"),
 					},
 				},
 				Done: true,
@@ -165,7 +165,7 @@ func TestInternalForwardRequest(t *testing.T) {
 	if err != nil {
 		t.Fatalf("stream.Recv() #2 error: %v", err)
 	}
-	if resp2.GetMessage().GetContent() != "Hello from agent!" {
+	if string(resp2.GetMessage().GetContent()) != "Hello from agent!" {
 		t.Errorf("resp2 message content = %q, want %q", resp2.GetMessage().GetContent(), "Hello from agent!")
 	}
 	if !resp2.GetDone() {

@@ -21,7 +21,7 @@ import (
 	"github.com/wereliang/aiagw/pkg/errcode"
 )
 
-const responseTimeout = 120 * time.Second
+const responseTimeout = 300 * time.Second
 
 type ChatHandler struct {
 	sessionMgr      *session.Manager
@@ -185,6 +185,7 @@ func (h *ChatHandler) collectNonStreamResponse(c *gin.Context, agentID, agentTyp
 	var contentBuf strings.Builder
 	sessionHandled := false
 	requestSessionID := c.GetHeader("X-Session-Id")
+	sentContentLen := 0
 
 	for {
 		select {
@@ -209,20 +210,25 @@ func (h *ChatHandler) collectNonStreamResponse(c *gin.Context, agentID, agentTyp
 			}
 
 			if chunk := resp.GetChunk(); chunk != nil {
-				contentBuf.WriteString(chunk.GetContent())
+				accumulated := chunk.GetContent()
+				if len(accumulated) > sentContentLen {
+					contentBuf.WriteString(accumulated[sentContentLen:])
+					sentContentLen = len(accumulated)
+				}
 			}
 
 			if resp.GetDone() {
 				if msg := resp.GetMessage(); msg != nil {
-					contentBuf.WriteString(msg.GetContent())
+					contentBuf.Write(msg.GetContent())
 				}
+				finalContent, _ := json.Marshal(contentBuf.String())
 				return &pb.AgentResponse{
 					RequestId: resp.GetRequestId(),
 					SessionId: resp.GetSessionId(),
 					Content: &pb.AgentResponse_Message{
 						Message: &pb.ChatMessage{
 							Role:    "assistant",
-							Content: contentBuf.String(),
+							Content: finalContent,
 						},
 					},
 					Done: true,

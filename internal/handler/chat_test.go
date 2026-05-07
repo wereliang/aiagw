@@ -17,6 +17,7 @@ import (
 	"github.com/wereliang/aiagw/internal/router"
 	"github.com/wereliang/aiagw/internal/session"
 	"github.com/wereliang/aiagw/pkg/errcode"
+	"go.uber.org/zap"
 )
 
 const (
@@ -38,7 +39,7 @@ func setupTest(t *testing.T) (*gin.Engine, *miniredis.Miniredis, *agent.GRPCServ
 	grpcServer := agent.NewGRPCServer(pool)
 	rtr := router.New(pool)
 
-	handler := NewChatHandler(sessionMgr, grpcServer, rtr, pool, nil, testGateway)
+	handler := NewChatHandler(sessionMgr, grpcServer, rtr, pool, nil, testGateway, zap.NewNop())
 
 	gin.SetMode(gin.TestMode)
 	engine := gin.New()
@@ -105,7 +106,7 @@ func TestChatNoAgentAvailable(t *testing.T) {
 	req := newChatRequest(t, openai.ChatCompletionRequest{
 		Model: testAgentType,
 		Messages: []openai.Message{
-			{Role: "user", Content: "hello"},
+			{Role: "user", Content: json.RawMessage(`"hello"`)},
 		},
 	})
 	w := httptest.NewRecorder()

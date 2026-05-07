@@ -49,7 +49,7 @@ message AgentResponse {
 
 message ChatMessage {
   string role = 1;
-  string content = 2;
+  bytes content = 2;
 }
 
 message StreamChunk {

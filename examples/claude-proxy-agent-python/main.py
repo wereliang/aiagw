@@ -1,4 +1,5 @@
 import asyncio
+import json
 import logging
 import os
 import signal
@@ -85,7 +86,15 @@ class ClaudeProxyAgent:
             asyncio.create_task(self._handle_request(stream, req))
 
     async def _handle_request(self, stream, req: agent_pb2.AgentRequest):
-        prompt = req.messages[-1].content if req.messages else ""
+        raw_content = req.messages[-1].content if req.messages else b'""'
+        try:
+            prompt = json.loads(raw_content)
+        except (json.JSONDecodeError, UnicodeDecodeError):
+            prompt = raw_content.decode(errors="replace")
+        if isinstance(prompt, str):
+            pass
+        else:
+            prompt = json.dumps(prompt)
         wrapper_session_id = req.session_id
         logger.info(f"received request {req.request_id}, sessionID:{wrapper_session_id} prompt: {prompt[:80]}")
 
@@ -190,7 +199,7 @@ class ClaudeProxyAgent:
             response=agent_pb2.AgentResponse(
                 request_id=request_id,
                 session_id=session_id,
-                message=agent_pb2.ChatMessage(role="assistant", content=content),
+                message=agent_pb2.ChatMessage(role="assistant", content=json.dumps(content).encode()),
                 done=True,
             )
         )

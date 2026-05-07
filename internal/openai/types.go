@@ -1,10 +1,13 @@
 package openai
 
+import "encoding/json"
+
 // Message represents a single message in a chat conversation.
+// Content is json.RawMessage to support both plain string and multimodal array.
 type Message struct {
-	Role             string `json:"role"`
-	Content          string `json:"content"`
-	ReasoningContent string `json:"reasoning_content,omitempty"`
+	Role             string          `json:"role"`
+	Content          json.RawMessage `json:"content"`
+	ReasoningContent string          `json:"reasoning_content,omitempty"`
 }
 
 // ChatCompletionRequest represents an OpenAI-compatible chat completion request.
