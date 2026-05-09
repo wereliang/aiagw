@@ -101,9 +101,15 @@ func (h *ChatHandler) resolveAgent(c *gin.Context, model string) (agentID, rawSe
 	if compositeID := c.GetHeader("X-Session-Id"); compositeID != "" {
 		sess, sessErr := h.sessionMgr.Get(ctx, compositeID)
 		if sessErr == nil {
-			_ = h.sessionMgr.Touch(ctx, compositeID)
-			_, rawID, _ := session.ParseSessionID(compositeID)
-			return sess.AgentID, rawID, sess.AgentType, true, nil
+			if sess.AgentType == model {
+				_ = h.sessionMgr.Touch(ctx, compositeID)
+				_, rawID, _ := session.ParseSessionID(compositeID)
+				return sess.AgentID, rawID, sess.AgentType, true, nil
+			}
+			h.logger.Info("session agent_type mismatch, re-routing",
+				zap.String("session_agent_type", sess.AgentType),
+				zap.String("request_model", model),
+			)
 		}
 	}
 
@@ -185,7 +191,6 @@ func (h *ChatHandler) collectNonStreamResponse(c *gin.Context, agentID, agentTyp
 	var contentBuf strings.Builder
 	sessionHandled := false
 	requestSessionID := c.GetHeader("X-Session-Id")
-	sentContentLen := 0
 
 	for {
 		select {
@@ -210,11 +215,7 @@ func (h *ChatHandler) collectNonStreamResponse(c *gin.Context, agentID, agentTyp
 			}
 
 			if chunk := resp.GetChunk(); chunk != nil {
-				accumulated := chunk.GetContent()
-				if len(accumulated) > sentContentLen {
-					contentBuf.WriteString(accumulated[sentContentLen:])
-					sentContentLen = len(accumulated)
-				}
+				contentBuf.WriteString(chunk.GetContent())
 			}
 
 			if resp.GetDone() {
@@ -327,8 +328,6 @@ func (h *ChatHandler) writeStreamResponses(c *gin.Context, agentID, agentType st
 	flusher, _ := c.Writer.(http.Flusher)
 	sessionHandled := false
 	requestSessionID := c.GetHeader("X-Session-Id")
-	sentContentLen := 0
-	sentReasoningLen := 0
 
 	for {
 		select {
@@ -368,18 +367,8 @@ func (h *ChatHandler) writeStreamResponses(c *gin.Context, agentID, agentType st
 			}
 
 			if chk := resp.GetChunk(); chk != nil {
-				accumulated := chk.GetContent()
-				accReasoning := chk.GetReasoningContent()
-				deltaContent := ""
-				deltaReasoning := ""
-				if len(accumulated) > sentContentLen {
-					deltaContent = accumulated[sentContentLen:]
-					sentContentLen = len(accumulated)
-				}
-				if len(accReasoning) > sentReasoningLen {
-					deltaReasoning = accReasoning[sentReasoningLen:]
-					sentReasoningLen = len(accReasoning)
-				}
+				deltaContent := chk.GetContent()
+				deltaReasoning := chk.GetReasoningContent()
 				if deltaContent != "" || deltaReasoning != "" {
 					chunk := openai.MakeDeltaChunk(resp.GetRequestId(), agentType, deltaContent, deltaReasoning)
 					data, _ := json.Marshal(chunk)
